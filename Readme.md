@@ -137,6 +137,22 @@ goroutines to overlap operator-call latency.
   run, a Redis-based lock would briefly block new sends/topups for that
   customer to keep the running total and the checkpoint consistent — an
   acceptable tradeoff if scheduled off-peak.
+- **Metrics and distributed tracing** — the services currently emit only
+  structured request/error logs. The next step is exporting Prometheus metrics
+  (request rate, error rate, latency histograms, Kafka consumer lag, operator
+  call latency) and adding OpenTelemetry traces that follow a message end to
+  end: API handler → Kafka → worker → operator call → Cassandra write. Traces
+  make it possible to attribute latency to a specific hop rather than guessing
+  from aggregate logs.
+- **Trace-driven express SLA alerting** — with per-message tracing in place we
+  can enforce the express delivery-time target directly off the span data.
+  Each express message carries a span from acceptance to operator delivery;
+  whenever that end-to-end latency crosses **2s** (just an example threshold), we fire an alert (e.g. an
+  Alertmanager rule on the express latency histogram's high percentiles, or a
+  span-based SLO monitor). This turns the SLA from a provisioning assumption
+  into an actively monitored guarantee, and the trace pinpoints which hop
+  (Kafka backlog, operator, or DB write) caused the breach so it can be acted
+  on quickly.
 
 ## 10. Tech Stack Summary
 
