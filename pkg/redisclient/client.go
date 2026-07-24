@@ -9,10 +9,10 @@ import (
 	"github.com/calgorr/sms-gateway/config"
 )
 
-func NewClient(cfg config.Config) (*goredis.Client, error) {
+func NewClient(cfg config.Redis) (*goredis.Client, error) {
 	client := goredis.NewClient(&goredis.Options{
-		Addr: fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port),
-		DB:   cfg.Redis.DB,
+		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		DB:   cfg.DB,
 	})
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
