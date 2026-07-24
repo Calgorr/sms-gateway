@@ -21,18 +21,21 @@ with a highly non-uniform load distribution across customers.
 flowchart LR
     Client -->|REST| API[API Service]
     API -->|check + deduct| Redis[(Redis<br/>balance)]
-    API -->|publish event| Kafka[[Kafka<br/>sms-normal / sms-express]]
+    API -->|produce| Insert[[insert.sms topic]]
+    API -->|produce| Kafka[[sms-normal / sms-express]]
+    Insert -->|consume| API
+    API -->|write debit| Postgres[(Postgres<br/>ledger)]
+    API -->|write row| Cassandra[(Cassandra<br/>messages)]
     Kafka --> WN[Worker: Normal]
     Kafka --> WE[Worker: Express]
     WN --> Operator[(SMS Operator)]
     WE --> Operator
-    WN --> Cassandra[(Cassandra<br/>messages)]
-    WE --> Cassandra
-    WN --> Postgres[(Postgres<br/>ledger + balances)]
-    WE --> Postgres
+    WN -->|update status| Cassandra
+    WE -->|update status| Cassandra
     Client -->|GET /reports| API
     API -->|query| Cassandra
 ```
+
 
 ## 4. Components
 
