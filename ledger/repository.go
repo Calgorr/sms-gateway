@@ -10,10 +10,10 @@ import (
 )
 
 type LedgerRepository interface {
-	InsertDebit(ctx context.Context, customerID string, amount int64, messageID string) error
-	InsertTopup(ctx context.Context, customerID string, amount int64) error
-	FetchByCustomer(ctx context.Context, customerID string, limit int) ([]Entry, error)
-	SumByCustomer(ctx context.Context, customerID string) (int64, error)
+	InsertDebit(ctx context.Context, customerID, amount int64, messageID string) error
+	InsertTopup(ctx context.Context, customerID, amount int64) error
+	FetchByCustomer(ctx context.Context, customerID int64, limit int) ([]Entry, error)
+	SumByCustomer(ctx context.Context, customerID int64) (int64, error)
 }
 
 type ledgerRepository struct {
@@ -25,7 +25,7 @@ func NewRepository(db *sqlx.DB) LedgerRepository {
 }
 
 // InsertDebit records a negative ledger entry tied to a specific message.
-func (r *ledgerRepository) InsertDebit(ctx context.Context, customerID string, amount int64, messageID string) error {
+func (r *ledgerRepository) InsertDebit(ctx context.Context, customerID, amount int64, messageID string) error {
 	if amount > 0 {
 		return fmt.Errorf("debit amount must be negative or zero, got %d", amount)
 	}
@@ -37,7 +37,7 @@ func (r *ledgerRepository) InsertDebit(ctx context.Context, customerID string, a
 }
 
 // InsertTopup records a positive ledger entry.
-func (r *ledgerRepository) InsertTopup(ctx context.Context, customerID string, amount int64) error {
+func (r *ledgerRepository) InsertTopup(ctx context.Context, customerID, amount int64) error {
 	if amount <= 0 {
 		return fmt.Errorf("topup amount must be positive, got %d", amount)
 	}
@@ -47,7 +47,7 @@ func (r *ledgerRepository) InsertTopup(ctx context.Context, customerID string, a
 
 func (r *ledgerRepository) insert(
 	ctx context.Context,
-	customerID string,
+	customerID int64,
 	amount int64,
 	messageID sql.NullString,
 ) error {
@@ -80,7 +80,7 @@ func (r *ledgerRepository) insert(
 // If limit <= 0, all entries are returned.
 func (r *ledgerRepository) FetchByCustomer(
 	ctx context.Context,
-	customerID string,
+	customerID int64,
 	limit int,
 ) ([]Entry, error) {
 	query := `
@@ -116,7 +116,7 @@ func (r *ledgerRepository) FetchByCustomer(
 
 func (r *ledgerRepository) SumByCustomer(
 	ctx context.Context,
-	customerID string,
+	customerID int64,
 ) (int64, error) {
 	query := `
 		SELECT COALESCE(SUM(amount), 0)
