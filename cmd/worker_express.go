@@ -49,6 +49,7 @@ func runWorkerExpress(_ *cobra.Command, _ []string) {
 	defer reader.Close()
 
 	worker := dispatcher.NewWorker(
+		"express-worker",
 		reader,
 		operatorClient,
 		messageRepository,

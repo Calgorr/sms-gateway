@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -44,6 +45,7 @@ func (s *HttpServer) GetReports() echo.HandlerFunc {
 			to,
 		)
 		if err != nil {
+			log.Printf("reports: query for customer %d: %v", customerID, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": err.Error(),
 			})

@@ -49,6 +49,7 @@ func runWorkerNormal(_ *cobra.Command, _ []string) {
 	defer reader.Close()
 
 	worker := dispatcher.NewWorker(
+		"normal-worker",
 		reader,
 		operatorClient,
 		messageRepository,

@@ -15,14 +15,15 @@ import (
 )
 
 type Worker struct {
+	name     string
 	reader   *kafka.Reader
 	operator operator.Client
 	messages message.MessageRepository
 	workers  int
 }
 
-func NewWorker(reader *kafka.Reader, op operator.Client, messages message.MessageRepository, workers int) *Worker {
-	return &Worker{reader: reader, operator: op, messages: messages, workers: workers}
+func NewWorker(name string, reader *kafka.Reader, op operator.Client, messages message.MessageRepository, workers int) *Worker {
+	return &Worker{name: name, reader: reader, operator: op, messages: messages, workers: workers}
 }
 
 func (w *Worker) Run(ctx context.Context) error {
@@ -40,7 +41,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		default:
 			m, err := w.reader.FetchMessage(ctx)
 			if err != nil {
-				log.Printf("normal-worker: fetch error: %v", err)
+				log.Printf("%s: fetch error: %v", w.name, err)
 				continue
 			}
 			msgChan <- m
@@ -51,11 +52,11 @@ func (w *Worker) Run(ctx context.Context) error {
 func (w *Worker) processLoop(ctx context.Context, msgChan <-chan kafka.Message) {
 	for m := range msgChan {
 		if err := w.handle(ctx, m); err != nil {
-			log.Printf("normal-worker: handle failed, leaving uncommitted for retry: %v", err)
+			log.Printf("%s: handle failed, leaving uncommitted for retry: %v", w.name, err)
 			continue // offset not committed -> redelivered on rebalance/restart
 		}
 		if err := w.reader.CommitMessages(ctx, m); err != nil {
-			log.Printf("normal-worker: commit failed: %v", err)
+			log.Printf("%s: commit failed: %v", w.name, err)
 		}
 	}
 }
@@ -63,7 +64,7 @@ func (w *Worker) processLoop(ctx context.Context, msgChan <-chan kafka.Message) 
 func (w *Worker) handle(ctx context.Context, m kafka.Message) error {
 	var event sms.SMSEvent
 	if err := json.Unmarshal(m.Value, &event); err != nil {
-		log.Printf("normal-worker: bad event payload, dropping: %v", err)
+		log.Printf("%s: bad event payload, dropping: %v", w.name, err)
 		return nil
 	}
 
@@ -72,11 +73,11 @@ func (w *Worker) handle(ctx context.Context, m kafka.Message) error {
 	status := message.StatusSent
 	if sendErr != nil {
 		status = message.StatusFailed
-		log.Printf("normal-worker: operator send failed for %s: %v", event.MessageID, sendErr)
+		log.Printf("%s: operator send failed for %s: %v", w.name, event.MessageID, sendErr)
 	}
 	messageID, err := gocql.ParseUUID(event.MessageID)
 	if err != nil {
-		log.Printf("invalid message id %s: %v", event.MessageID, err)
+		log.Printf("%s: invalid message id %s: %v", w.name, event.MessageID, err)
 		return err
 	}
 
@@ -91,7 +92,7 @@ func (w *Worker) handle(ctx context.Context, m kafka.Message) error {
 		SentAt:     time.Now(),
 	}
 	if err := w.messages.Upsert(ctx, msg); err != nil {
-		log.Printf("normal-worker: failed to update message status for %s: %v", messageID, err)
+		log.Printf("%s: failed to update message status for %s: %v", w.name, messageID, err)
 		//TODO: consider retrying the update or sending to a dead-letter queue
 	}
 

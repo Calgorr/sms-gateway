@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo/v5"
 
 	"github.com/calgorr/sms-gateway/balance"
+	"github.com/calgorr/sms-gateway/internal/api/middleware"
 	"github.com/calgorr/sms-gateway/ledger"
 	"github.com/calgorr/sms-gateway/message"
 	"github.com/calgorr/sms-gateway/queue"
@@ -36,6 +37,8 @@ func (s *HttpServer) Start() error {
 }
 
 func (s *HttpServer) DefineRoutes() {
+	s.e.Use(middleware.Logging())
+
 	s.e.POST("/sms", s.SendSMS())
 	s.e.POST("/balance/topup", s.TopUpBalance())
 	s.e.GET("/reports", s.GetReports())

@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"time"
 
@@ -34,6 +35,7 @@ func (s *HttpServer) SendSMS() echo.HandlerFunc {
 			if errors.Is(err, balance.ErrCacheMiss) {
 				ledgerBalance, err := s.ledgerRepository.SumByCustomer(c.Request().Context(), req.CustomerID)
 				if err != nil {
+					log.Printf("send-sms: rebuild balance for customer %d: %v", req.CustomerID, err)
 					return c.JSON(500, map[string]string{"error": "failed to get balance from ledger"})
 				}
 				if ledgerBalance <= config.C.Opts.CostPerSms {
@@ -42,11 +44,13 @@ func (s *HttpServer) SendSMS() echo.HandlerFunc {
 				ledgerBalance -= config.C.Opts.CostPerSms
 				err = s.balanceService.SetBalance(c.Request().Context(), strconv.Itoa(int(req.CustomerID)), ledgerBalance)
 				if err != nil {
+					log.Printf("send-sms: set rebuilt balance for customer %d: %v", req.CustomerID, err)
 					return c.JSON(500, map[string]string{"error": "internal server error"})
 				}
 			} else if errors.Is(err, balance.ErrInsufficientBalance) {
 				return c.JSON(402, map[string]string{"error": "insufficient balance"})
 			} else {
+				log.Printf("send-sms: check balance for customer %d: %v", req.CustomerID, err)
 				return c.JSON(500, map[string]string{"error": "failed to check balance"})
 			}
 		}
@@ -71,11 +75,13 @@ func (s *HttpServer) SendSMS() echo.HandlerFunc {
 
 		// Produce the event to Kafka to insert debit in ledger first (to ensure balance is deducted before processing the SMS)
 		if err := s.producer.SendSMS(c.Request().Context(), queue.InsertSmsTopic, event); err != nil {
+			log.Printf("send-sms: publish to %s (message %s): %v", queue.InsertSmsTopic, messageID, err)
 			return c.JSON(500, map[string]string{"error": "internal server error"})
 		}
 
 		// Produce the event to Kafka
 		if err := s.producer.SendSMS(c.Request().Context(), topic, event); err != nil {
+			log.Printf("send-sms: publish to %s (message %s): %v", topic, messageID, err)
 			return c.JSON(500, map[string]string{"error": "internal server error"})
 		}
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -32,6 +33,7 @@ func (s *HttpServer) TopUpBalance() echo.HandlerFunc {
 			req.CustomerID,
 			req.Amount,
 		); err != nil {
+			log.Printf("topup: insert ledger for customer %d: %v", req.CustomerID, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "failed to insert topup ledger",
 			})
@@ -42,6 +44,7 @@ func (s *HttpServer) TopUpBalance() echo.HandlerFunc {
 			strconv.FormatInt(req.CustomerID, 10),
 			req.Amount,
 		); err != nil {
+			log.Printf("topup: update balance for customer %d: %v", req.CustomerID, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "failed to update balance",
 			})
