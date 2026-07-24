@@ -38,7 +38,7 @@ func (s *HttpServer) SendSMS() echo.HandlerFunc {
 					log.Printf("send-sms: rebuild balance for customer %d: %v", req.CustomerID, err)
 					return c.JSON(500, map[string]string{"error": "failed to get balance from ledger"})
 				}
-				if ledgerBalance <= config.C.Opts.CostPerSms {
+				if ledgerBalance < config.C.Opts.CostPerSms {
 					return c.JSON(402, map[string]string{"error": "insufficient balance"})
 				}
 				ledgerBalance -= config.C.Opts.CostPerSms

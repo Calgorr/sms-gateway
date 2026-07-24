@@ -54,12 +54,10 @@ func (s *RedisStore) CheckAndDeduct(ctx context.Context, customerID string) (int
 func (s *RedisStore) AddOrSetBalance(ctx context.Context, customerID string, amount int64) error {
 	key := fmt.Sprintf("balance:%s", customerID)
 
-	result, err := addOrSetBalanceScript.Run(ctx, s.client, []string{key}, amount).Text()
-	if err != nil {
+	// The script always returns the resulting balance as an integer, so the
+	// value itself isn't needed here — only whether the call succeeded.
+	if err := addOrSetBalanceScript.Run(ctx, s.client, []string{key}, amount).Err(); err != nil {
 		return fmt.Errorf("redis script exec: %w", err)
-	}
-	if result == "" || result == "-1" {
-		return ErrCacheMiss
 	}
 
 	return nil

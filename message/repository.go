@@ -43,6 +43,7 @@ func (r *repository) Report(
 	WHERE customer_id = ?
 	  AND sent_at >= ?
 	  AND sent_at <= ?
+	ALLOW FILTERING
 	`
 
 	iter := r.session.Query(

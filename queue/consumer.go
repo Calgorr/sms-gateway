@@ -10,6 +10,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/segmentio/kafka-go"
 
+	"github.com/calgorr/sms-gateway/config"
 	"github.com/calgorr/sms-gateway/ledger"
 	"github.com/calgorr/sms-gateway/message"
 	"github.com/calgorr/sms-gateway/sms"
@@ -73,6 +74,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 		}(i)
 	}
 
+fetchLoop:
 	for {
 		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
@@ -84,7 +86,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			break
+			break fetchLoop
 
 		case jobs <- msg:
 		}
@@ -121,7 +123,7 @@ func (c *Consumer) process(ctx context.Context, msg kafka.Message) error {
 		return fmt.Errorf("create message: %w", err)
 	}
 
-	if err := c.ledgerRepo.InsertDebit(ctx, event.CustomerID, 1, event.MessageID); err != nil {
+	if err := c.ledgerRepo.InsertDebit(ctx, event.CustomerID, -config.C.Opts.CostPerSms, event.MessageID); err != nil {
 		return fmt.Errorf("create ledger: %w", err)
 	}
 
