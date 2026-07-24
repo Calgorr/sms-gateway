@@ -27,8 +27,8 @@ type Message struct {
 	CustomerID   int64      `cql:"customer_id"`
 	Text         string     `cql:"text"`
 	Priority     Priority   `cql:"priority"`
+	To           string     `cql:"to_number"`
 	Status       Status     `cql:"status"`
-	Attempts     int32      `cql:"attempts"`
 	CreatedAt    time.Time  `cql:"created_at"`
 	SentAt       time.Time  `cql:"sent_at"`
 	FailedReason string     `cql:"failed_reason"`

@@ -9,7 +9,7 @@ import (
 )
 
 type MessageRepository interface {
-	Insert(ctx context.Context, msg *Message) error
+	Upsert(ctx context.Context, msg *Message) error // New method for upsert
 	Report(ctx context.Context, customerID int64, from, to time.Time) (*MessageReport, error)
 }
 
@@ -21,44 +21,6 @@ func NewRepository(session *gocql.Session) MessageRepository {
 	return &repository{
 		session: session,
 	}
-}
-
-func (r *repository) Insert(ctx context.Context, msg *Message) error {
-	query := `
-	INSERT INTO messages (
-		id,
-		customer_id,
-		request_id,
-		to_number,
-		text,
-		cost,
-		priority,
-		status,
-		operator_id,
-		attempts,
-		created_at,
-		sent_at,
-		delivered_at,
-		failed_reason
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	if err := r.session.Query(
-		query,
-		msg.ID,
-		msg.CustomerID,
-		msg.Text,
-		string(msg.Priority),
-		string(msg.Status),
-		msg.Attempts,
-		msg.CreatedAt,
-		msg.SentAt,
-		msg.FailedReason,
-	).WithContext(ctx).Exec(); err != nil {
-		return fmt.Errorf("insert message: %w", err)
-	}
-
-	return nil
 }
 
 func (r *repository) Report(
@@ -78,7 +40,6 @@ func (r *repository) Report(
 		priority,
 		status,
 		operator_id,
-		attempts,
 		created_at,
 		sent_at,
 		delivered_at,
@@ -110,7 +71,6 @@ func (r *repository) Report(
 		&m.Text,
 		&m.Priority,
 		&m.Status,
-		&m.Attempts,
 		&m.CreatedAt,
 		&m.SentAt,
 		&m.FailedReason,
@@ -137,4 +97,37 @@ func (r *repository) Report(
 	}
 
 	return report, nil
+}
+
+// Upsert inserts a new message or updates an existing one if the ID already exists
+func (r *repository) Upsert(ctx context.Context, msg *Message) error {
+	query := `
+	UPDATE messages SET
+		customer_id = ?,
+		to_number = ?,
+		text = ?,
+		priority = ?,
+		status = ?,
+		created_at = ?,
+		sent_at = ?,
+		failed_reason = ?
+	WHERE id = ?
+	`
+
+	if err := r.session.Query(
+		query,
+		msg.CustomerID,
+		msg.To,
+		msg.Text,
+		string(msg.Priority),
+		string(msg.Status),
+		msg.CreatedAt,
+		msg.SentAt,
+		msg.FailedReason,
+		msg.ID,
+	).WithContext(ctx).Exec(); err != nil {
+		return fmt.Errorf("upsert message: %w", err)
+	}
+
+	return nil
 }

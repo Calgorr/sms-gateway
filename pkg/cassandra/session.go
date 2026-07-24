@@ -3,22 +3,13 @@ package cassandra
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gocql/gocql"
+
+	"github.com/calgorr/sms-gateway/config"
 )
 
-type Config struct {
-	Hosts       []string
-	Port        int
-	Keyspace    string
-	Username    string
-	Password    string
-	Consistency string
-	Timeout     time.Duration
-}
-
-func NewSession(cfg Config) (*gocql.Session, error) {
+func NewSession(cfg config.Cassandra) (*gocql.Session, error) {
 	if len(cfg.Hosts) == 0 {
 		return nil, fmt.Errorf("at least one cassandra host must be provided")
 	}
