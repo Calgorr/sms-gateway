@@ -3,36 +3,37 @@ package kafka
 import (
 	"fmt"
 
-	"github.com/IBM/sarama"
+	"github.com/segmentio/kafka-go"
 
 	"github.com/calgorr/sms-gateway/config"
 )
 
-func NewProducer(cfg config.Config) (sarama.SyncProducer, error) {
-	if len(cfg.Kafka.Brokers) == 0 {
+func NewProducer(cfg config.Kafka) (*kafka.Writer, error) {
+	if len(cfg.Brokers) == 0 {
 		return nil, fmt.Errorf("at least one broker is required")
 	}
 
-	scfg := sarama.NewConfig()
+	writer := &kafka.Writer{
+		Addr:         kafka.TCP(cfg.Brokers...),
+		Balancer:     &kafka.Hash{},
+		RequiredAcks: kafka.RequireAll,
+		Async:        false,
+	}
 
-	scfg.ClientID = cfg.Kafka.ClientID
-	scfg.Version = sarama.V3_6_0_0
-
-	scfg.Producer.RequiredAcks = sarama.WaitForAll
-	scfg.Producer.Return.Successes = true
-	scfg.Producer.Return.Errors = true
-
-	return sarama.NewSyncProducer(cfg.Kafka.Brokers, scfg)
+	return writer, nil
 }
 
-func NewConsumer(cfg config.Config) (sarama.Consumer, error) {
-	if len(cfg.Kafka.Brokers) == 0 {
+func NewConsumer(cfg config.Kafka, topic string) (*kafka.Reader, error) {
+	if len(cfg.Brokers) == 0 {
 		return nil, fmt.Errorf("at least one broker is required")
 	}
 
-	scfg := sarama.NewConfig()
-	scfg.ClientID = cfg.Kafka.ClientID
-	scfg.Version = sarama.V3_6_0_0
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:  cfg.Brokers,
+		GroupID:  cfg.GroupID,
+		Topic:    topic,
+		MaxBytes: 10e6,
+	})
 
-	return sarama.NewConsumer(cfg.Kafka.Brokers, scfg)
+	return reader, nil
 }
