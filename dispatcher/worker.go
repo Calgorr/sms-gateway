@@ -69,11 +69,10 @@ func (w *Worker) handle(ctx context.Context, m kafka.Message) error {
 
 	sendErr := w.operator.Send(ctx, event.To, event.Text)
 
-	failReason := ""
 	status := message.StatusSent
 	if sendErr != nil {
 		status = message.StatusFailed
-		failReason = sendErr.Error()
+		log.Printf("normal-worker: operator send failed for %s: %v", event.MessageID, sendErr)
 	}
 	messageID, err := gocql.ParseUUID(event.MessageID)
 	if err != nil {
@@ -82,15 +81,14 @@ func (w *Worker) handle(ctx context.Context, m kafka.Message) error {
 	}
 
 	msg := &message.Message{
-		ID:           messageID,
-		CustomerID:   event.CustomerID,
-		To:           event.To,
-		Text:         event.Text,
-		Priority:     message.Priority(event.Priority),
-		Status:       status,
-		CreatedAt:    event.CreatedAt,
-		SentAt:       time.Now(),
-		FailedReason: failReason,
+		ID:         messageID,
+		CustomerID: event.CustomerID,
+		To:         event.To,
+		Text:       event.Text,
+		Priority:   message.Priority(event.Priority),
+		Status:     status,
+		CreatedAt:  event.CreatedAt,
+		SentAt:     time.Now(),
 	}
 	if err := w.messages.Upsert(ctx, msg); err != nil {
 		log.Printf("normal-worker: failed to update message status for %s: %v", messageID, err)

@@ -9,7 +9,7 @@ import (
 )
 
 type MessageRepository interface {
-	Upsert(ctx context.Context, msg *Message) error // New method for upsert
+	Upsert(ctx context.Context, msg *Message) error
 	Report(ctx context.Context, customerID int64, from, to time.Time) (*MessageReport, error)
 }
 
@@ -31,19 +31,14 @@ func (r *repository) Report(
 
 	query := `
 	SELECT
-		id,
 		customer_id,
-		request_id,
+		id,
 		to_number,
 		text,
-		cost,
 		priority,
 		status,
-		operator_id,
 		created_at,
-		sent_at,
-		delivered_at,
-		failed_reason
+		sent_at
 	FROM messages
 	WHERE customer_id = ?
 	  AND sent_at >= ?
@@ -66,19 +61,18 @@ func (r *repository) Report(
 	var m Message
 
 	for iter.Scan(
-		&m.ID,
 		&m.CustomerID,
+		&m.ID,
+		&m.To,
 		&m.Text,
 		&m.Priority,
 		&m.Status,
 		&m.CreatedAt,
 		&m.SentAt,
-		&m.FailedReason,
 	) {
 		report.Messages = append(report.Messages, m)
 
 		report.TotalMessages++
-		report.TotalCost += 1
 
 		switch m.Status {
 		case StatusSent:
@@ -87,7 +81,7 @@ func (r *repository) Report(
 		case StatusFailed:
 			report.FailedCount++
 
-		case StatusPending, StatusQueued:
+		case StatusQueued:
 			report.PendingCount++
 		}
 	}
@@ -99,31 +93,28 @@ func (r *repository) Report(
 	return report, nil
 }
 
-// Upsert inserts a new message or updates an existing one if the ID already exists
+// Upsert inserts a new message or updates an existing one if the ID already exists.
 func (r *repository) Upsert(ctx context.Context, msg *Message) error {
 	query := `
 	UPDATE messages SET
-		customer_id = ?,
 		to_number = ?,
 		text = ?,
 		priority = ?,
 		status = ?,
 		created_at = ?,
-		sent_at = ?,
-		failed_reason = ?
-	WHERE id = ?
+		sent_at = ?
+	WHERE customer_id = ? AND id = ?
 	`
 
 	if err := r.session.Query(
 		query,
-		msg.CustomerID,
 		msg.To,
 		msg.Text,
 		string(msg.Priority),
 		string(msg.Status),
 		msg.CreatedAt,
 		msg.SentAt,
-		msg.FailedReason,
+		msg.CustomerID,
 		msg.ID,
 	).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("upsert message: %w", err)

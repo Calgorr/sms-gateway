@@ -92,7 +92,7 @@ func serveApi(_ *cobra.Command, _ []string) {
 
 	server.DefineRoutes()
 
-	addr := fmt.Sprintf("%s:%d", config.C.HttpServer.Host, config.C.HttpServer.Port)
+	addr := fmt.Sprintf("%s:%s", config.C.HttpServer.Host, config.C.HttpServer.Port)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

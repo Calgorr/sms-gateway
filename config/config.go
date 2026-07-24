@@ -81,4 +81,5 @@ type Postgres struct {
 	Database string `yaml:"database"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+	SSLMode  string `yaml:"ssl_mode"`
 }

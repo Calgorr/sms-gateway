@@ -115,6 +115,7 @@ func (c *Consumer) process(ctx context.Context, msg kafka.Message) error {
 		To:         event.To,
 		Text:       event.Text,
 		Priority:   message.Priority(event.Priority),
+		Status:     message.StatusQueued,
 		CreatedAt:  event.CreatedAt,
 	}); err != nil {
 		return fmt.Errorf("create message: %w", err)
