@@ -23,6 +23,8 @@ func NewRepository(session *gocql.Session) MessageRepository {
 	}
 }
 
+// internal/message/repository.go (updated Report method)
+
 func (r *repository) Report(
 	ctx context.Context,
 	customerID int64,
@@ -41,9 +43,8 @@ func (r *repository) Report(
 		sent_at
 	FROM messages
 	WHERE customer_id = ?
-	  AND sent_at >= ?
-	  AND sent_at <= ?
-	ALLOW FILTERING
+	  AND id >= minTimeuuid(?)
+	  AND id <= maxTimeuuid(?)
 	`
 
 	iter := r.session.Query(
@@ -72,16 +73,13 @@ func (r *repository) Report(
 		&m.SentAt,
 	) {
 		report.Messages = append(report.Messages, m)
-
 		report.TotalMessages++
 
 		switch m.Status {
 		case StatusSent:
 			report.SuccessCount++
-
 		case StatusFailed:
 			report.FailedCount++
-
 		case StatusQueued:
 			report.PendingCount++
 		}
